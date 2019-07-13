@@ -1,0 +1,63 @@
+<h2>URL Shortener</h2>
+<div style="margin: 64px 0;">
+	<div class="row">
+		<div class="col-md-offset-3 col-md-6">
+			<div data-jc="textbox__formurl.url" class="m">Insert URL</div>
+			<button data-jc="actionbutton__urlstatus__exec:main/geturl;icons:save|refresh|check|times;timeout2:1000;fullwidth:true">Get Short Link</button>
+		</div>
+	</div>
+
+	<div class="row m">
+		<div class="col-md-offset-3 col-md-6">
+			<h1 style="cursor:pointer" data-bind="shorturl__html:value__click:main/clipboard" class="center"></h1>
+		</div>
+	</div>
+</div>
+<div data-jc="grid__main.grid__autosize:true;button:main/remove" style="position:relative">
+	<script type="text/plain">
+		[
+			{ name: 'id', text: 'Short URL', size: 2, template: '<a href="/{{ id }}">{{ id }}</a>', filter: false },
+			{ name: 'url', text: 'Original URL', size: 9, template: '<a href="{{ url }}">{{ url }}</a>', filter: false },
+			{ text: 'Actions', size: 1, template: '<button><i class="fa fa-times"></i></button>', filter: false }
+		]
+	</script>
+</div>
+
+<script>
+	var formurl = { url: '' };
+	var shorturl = '';
+
+	PLUGIN('main', function(exports) {
+		exports.refresh = function() {
+			SETTER('loading', 'show');
+			AJAX('GET /api/urls/', 'main.grid');
+			SETTER('loading', 'hide', 500);
+		};
+		exports.geturl = function() {
+			if (!formurl.url)
+				return SET('urlstatus', false);
+			AJAX('POST /api/urls/', GET('formurl'), function(data){
+				SET('urlstatus', data.success);
+				SET('shorturl', data.success ? location.host + '/' + data.value.id : 'Oops!');
+				if (data.success) {
+					setTimeout(function(){
+						SETTER('notify', 'append', 'Link copied to the clipboard.', 'success');
+						exports.refresh();
+					}, 1000);
+				}
+				SET('formurl.url', '');
+			});
+		};
+		exports.remove = function(el, item) {
+			AJAX('DELETE /api/urls/{0}'.format(item.id), function(data){
+				if (data.success) {
+					exports.refresh();
+				}
+			});
+		};
+		exports.clipboard = function(el){
+			SETTER('clipboard', 'copy', el.text());
+			SETTER('notify', 'append', 'Link copied to the clipboard.', 'success');
+		};
+	});
+</script>
